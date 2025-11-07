@@ -8,6 +8,8 @@ import io
 import time
 import re
 import sys
+import psutil
+import socket
 
 # Si estamos en Linux o mac, importaremos pg-embed dinámicamente.
 if platform.system() != "Windows":
@@ -180,19 +182,31 @@ def ensure_postgres():
                 check=True,
             )
 
+        def is_postgres_running(port=PG_PORT):
+            """Verifica si ya hay un proceso de PostgreSQL corriendo en el puerto dado."""
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                return sock.connect_ex(("127.0.0.1", port)) == 0
+
+        # ---
+        if is_postgres_running(PG_PORT):
+            print(f"PostgreSQL ya está corriendo en el puerto {PG_PORT}, se reutilizará.")
+            return {"port": PG_PORT}
+
         print("Iniciando PostgreSQL portable...")
-        pg_process = subprocess.Popen(
-            [
-                os.path.join(BIN_DIR, "pg_ctl.exe"),
-                "-D",
-                DATA_DIR,
-                "-o",
-                f"-p {PG_PORT}",
-                "start",
-            ]
-        )
+        pg_process = subprocess.Popen([
+            os.path.join(BIN_DIR, "pg_ctl.exe"),
+            "-D", DATA_DIR,
+            "-o", f"-p {PG_PORT}",
+            "start"
+        ])
         time.sleep(3)
+
+        if not is_postgres_running(PG_PORT):
+            raise RuntimeError("PostgreSQL no pudo iniciarse correctamente.")
+
         print(f"PostgreSQL portable ejecutándose en el puerto {PG_PORT}")
+        return {"port": PG_PORT}
+
         return {"port": PG_PORT}
 
     # ==== 🐧 LINUX / 🍏 MAC ====

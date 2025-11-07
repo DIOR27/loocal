@@ -2,15 +2,8 @@
     "instances": [
         {
             "name": "prueba",
-            "version": "18.0",
+            "version": "19.0",
             "path": "C:\\Users\\Usuario\\Documents\\Dev\\loocal\\instances\\prueba",
-            "port": 8069,
-            "status": "running"
-        },
-        {
-            "name": "prueba2",
-            "version": "18.0",
-            "path": "C:\\Users\\Usuario\\Documents\\Dev\\loocal\\instances\\prueba2",
             "port": 8069,
             "status": "running"
         }
