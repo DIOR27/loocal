@@ -3,3 +3,4 @@ venv/
 postgres/
 instances/
 __pycache__/
+config.json

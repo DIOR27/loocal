@@ -178,6 +178,8 @@ def ensure_postgres():
                     "postgres",
                     "-A",
                     "trust",
+                    "--locale=C",
+                    "--encoding=UTF8",
                 ],
                 check=True,
             )

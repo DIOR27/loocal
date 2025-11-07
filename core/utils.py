@@ -2,16 +2,18 @@ import os
 import json
 import random
 import psutil
+import socket
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
 
 
 def get_free_port(start=8069, end=8999):
-    used = [conn.laddr.port for conn in psutil.net_connections() if conn.laddr]
-    for port in range(start, end):
-        if port not in used:
-            return port
-    raise RuntimeError("No hay puertos disponibles en el rango")
+    """Encuentra un puerto libre entre start y end."""
+    for port in range(start, end + 1):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            if s.connect_ex(("127.0.0.1", port)) != 0:
+                return port
+    raise RuntimeError("No hay puertos disponibles en el rango especificado.")
 
 
 def load_config():
