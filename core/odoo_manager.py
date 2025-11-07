@@ -125,6 +125,7 @@ db_host = localhost
 db_port = {db_port}
 db_user = {db_user}
 db_password = {db_password}
+db_name = {name}
 admin_passwd = admin
 xmlrpc_port = {odoo_port}
 logfile = {os.path.join(inst_dir, 'logs', 'odoo.log')}
