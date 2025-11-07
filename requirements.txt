@@ -1,4 +1,0 @@
-PyQt6
-requests
-psutil
-pg-embed; platform_system != "Windows"
