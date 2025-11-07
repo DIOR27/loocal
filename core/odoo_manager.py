@@ -17,6 +17,7 @@ def ensure_version(version, versions_dir):
                 version,
                 "https://github.com/odoo/odoo.git",
                 version_path,
+                "--single-branch"
             ],
             check=True,
         )

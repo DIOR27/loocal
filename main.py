@@ -19,6 +19,68 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 versions_dir, instances_dir = ensure_dirs(BASE_DIR)
 
 
+# === 🔍 Obtener versiones disponibles de Odoo desde GitHub ===
+def get_odoo_versions():
+    """
+    Obtiene las ramas del repositorio oficial de Odoo
+    y devuelve solo las que siguen el patrón xx.0 (por ejemplo, 17.0, 18.0).
+    Se intenta primero usando 'git ls-remote', y si falla, se usa la API de GitHub.
+    """
+    print("Obteniendo lista de versiones de Odoo disponibles...")
+
+    try:
+        # Intentar obtener usando git (más rápido y sin autenticación)
+        output = subprocess.check_output(
+            ["git", "ls-remote", "--heads", "https://github.com/odoo/odoo.git"],
+            text=True,
+            timeout=15,
+        )
+        versions = re.findall(r"refs/heads/(\d{2}\.0)", output)
+        versions = sorted(
+            set(versions), key=lambda v: int(v.split(".")[0]), reverse=True
+        )
+        if versions:
+            print(f"Versiones detectadas: {versions}")
+            return versions
+    except Exception as e:
+        print(f"No se pudo usar git ls-remote: {e}")
+
+    # Si falla git, usar API de GitHub
+    try:
+        url = "https://api.github.com/repos/odoo/odoo/branches"
+        branches = requests.get(url, timeout=10).json()
+        versions = [b["name"] for b in branches if re.match(r"^\d{2}\.0$", b["name"])]
+        versions.sort(reverse=True)
+        print(f"Versiones detectadas (API): {versions}")
+        return versions
+    except Exception as e:
+        print(f"Error consultando la API de GitHub: {e}")
+        # fallback básico
+        return ["18.0", "17.0", "16.0", "15.0"]
+
+
+# === 🧠 Cachear versiones por 24h para evitar consultas repetidas ===
+def get_cached_odoo_versions(base_dir):
+    cache_file = os.path.join(base_dir, "versions.json")
+    if os.path.exists(cache_file):
+        try:
+            data = json.load(open(cache_file))
+            if time.time() - data.get("timestamp", 0) < 86400:  # 24h
+                return data["versions"]
+        except Exception:
+            pass
+    versions = get_odoo_versions()
+    try:
+        json.dump(
+            {"timestamp": time.time(), "versions": versions},
+            open(cache_file, "w"),
+            indent=2,
+        )
+    except Exception:
+        pass
+    return versions
+
+
 class OdooManagerApp(QWidget):
     def __init__(self):
         super().__init__()
@@ -79,19 +141,32 @@ class OdooManagerApp(QWidget):
         name, ok = QInputDialog.getText(self, "Nueva instancia", "Nombre:")
         if not ok or not name:
             return
-        version, ok = QInputDialog.getText(self, "Versión de Odoo", "Ejemplo: 17.0")
+
+        # Obtener lista de versiones disponibles desde GitHub (cacheada)
+        versions = get_cached_odoo_versions(BASE_DIR)
+        if not versions:
+            QMessageBox.warning(self, "Error", "No se pudieron obtener las versiones de Odoo.")
+            return
+
+        # Mostrar selector con versiones
+        version, ok = QInputDialog.getItem(
+            self,
+            "Selecciona versión de Odoo",
+            "Versión disponible:",
+            versions,
+            0,
+            False
+        )
         if not ok or not version:
             return
+
         try:
             instance = create_instance(name, version, versions_dir, instances_dir)
-            QMessageBox.information(
-                self,
-                "Instancia creada",
-                f"{name} (Odoo {version}) en puerto {instance['port']}",
-            )
+            QMessageBox.information(self, "Instancia creada", f"{name} (Odoo {version}) en puerto {instance['port']}")
             self.refresh_list()
         except Exception as e:
             QMessageBox.critical(self, "Error", str(e))
+
 
     def start_instance(self):
         selected = self.instance_list.currentRow()
